@@ -69,6 +69,18 @@ deploy Noctite, Redis, PostgreSQL, persistent media volumes, and the internal
 network shared with the adapter. Nothing here creates an ingress router or
 publishes `noctite.manafield.studio`.
 
+## Optional Manafield Web presentation
+
+`manafield-web` is an **optional** presentation Shell that reads the Core
+Module Registry through `GET /modules`. Registering this adapter makes its
+name and status operations discoverable to Core clients; Noctite remains a
+standalone SNS, and public browsing to `noctite.manafield.studio` would
+require a separate reverse-proxy/ingress configuration.
+
+Do **not** declare `manafield-web` as a hard Module capability dependency.
+A future Web presentation may add a discoverable Noctite launch link and a
+status card without routing the SNS user traffic through `manafield-web`.
+
 ## Integration readiness
 
 - [x] Manafield module manifest and two HTTP operation contracts
@@ -85,6 +97,10 @@ Misskey ActivityPub identity data for Noctite development.
 
 ## License
 
-The separate Noctite/Misskey fork remains AGPL-3.0. A public reuse license
-for this independent adapter has **not** been selected yet. Public GitHub
-visibility alone does not grant redistribution or modification rights.
+This independently developed Manafield adapter is licensed under
+**Apache License 2.0**, matching [Manafield Core](https://github.com/eventide-manafield/manafield).
+See [LICENSE](LICENSE).
+
+The separate [Noctite/Misskey fork](https://github.com/eventide-manafield/noctite)
+remains **AGPL-3.0**. This adapter does not copy or redistribute the
+Misskey source code.
