@@ -1,0 +1,50 @@
+{
+  "status": "PROPOSAL_ONLY_DO_NOT_COPY_WHOLE_OBJECT_INTO_A_MANIFEST",
+  "purpose": "Account OAuth consumer capability is only valid after OAuth SSO code and issuer lifecycle checks are implemented.",
+  "provider_manifest_fragment": {
+    "id": "manafield-account-core",
+    "provides": {
+      "capabilities": [
+        {
+          "id": "manafield.identity.oauth2",
+          "version": "1.0.0"
+        }
+      ]
+    }
+  },
+  "consumer_manifest_fragment": {
+    "id": "manafield-noctite",
+    "requires": {
+      "capabilities": {
+        "identity": {
+          "id": "manafield.identity.oauth2",
+          "version": "^1.0.0"
+        }
+      }
+    }
+  },
+  "instance_binding_example": {
+    "consumer": "manafield-noctite",
+    "slot": "identity",
+    "target": "manafield-account-core",
+    "note": "Administrator selects actual Module instance. This is not a deployable Instance Definition fragment."
+  },
+  "oauth_client_example": {
+    "client_id": "noctite-manafield-integration",
+    "redirect_uri": "https://noctite.manafield.studio/auth/manafield/callback",
+    "response_type": "code",
+    "code_challenge_method": "S256",
+    "userinfo_fields": [
+      "sub",
+      "preferred_username"
+    ],
+    "note": "Exact callback/client registration needs explicit operator approval. The callback route does not exist yet."
+  },
+  "activation_gates": [
+    "Account Core provider advertises and contract-tests complete manafield.identity.oauth2 v1",
+    "Noctite fork implements OAuth client + JIT signup + first-login consent + local identity mapping",
+    "Account disable/logout lifecycle policy and session revocation verified",
+    "Adapter configured to require capability and owner binds it in dev Instance",
+    "Noctite development integration tests and security review pass"
+  ]
+}
