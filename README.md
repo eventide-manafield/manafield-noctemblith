@@ -81,6 +81,26 @@ Do **not** declare `manafield-web` as a hard Module capability dependency.
 A future Web presentation may add a discoverable Noctite launch link and a
 status card without routing the SNS user traffic through `manafield-web`.
 
+## Optional Manafield Account integration (proposed)
+
+A future Noctite instance may allow people to sign in with their **active
+Manafield Account** and provision a Noctite account on first consented use.
+The existing Account Core source has OAuth2 Authorization Code + PKCE, but
+Noctite currently has **no implemented OAuth consumer, account link database
+or JIT provisioning**. The adapter's current runtime still provides health
+and status only.
+
+The proposed OAuth Capability `manafield.identity.oauth2` is **not** added
+to the live `manafield.module.json` in this change. It requires provider
+contract tests and explicit administrator binding, and must not be confused
+with the older broad `manafield.identity` capability. See
+[Account integration proposal v0](docs/account-integration-design-v0.md) and
+[illustrative Capability fragments](docs/account-capability.v0.example.json).
+
+No mandatory `manafield-web` dependency is needed; it is a presentation
+client of the Core registry, and future mobile/CLI clients may use the same
+Capability contract.
+
 ## Integration readiness
 
 - [x] Manafield module manifest and two HTTP operation contracts
