@@ -1,0 +1,81 @@
+{
+  "id": "manafield-noctite",
+  "name": "Manafield Noctite Adapter",
+  "description": "Read-only health and status bridge for an independently managed Noctite (Misskey fork) service.",
+  "version": "0.0.1",
+  "healthOperation": "health",
+  "operations": [
+    {
+      "id": "health",
+      "description": "Reports whether the configured Noctite server is ready.",
+      "input": null,
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "version",
+          "noctiteReady"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "noctiteReady": {
+            "type": "boolean"
+          }
+        }
+      },
+      "binding": {
+        "type": "http",
+        "method": "GET",
+        "path": "/manafield/health",
+        "codecs": [
+          "json"
+        ]
+      }
+    },
+    {
+      "id": "status",
+      "description": "Returns the read-only status of the Noctite backend.",
+      "input": null,
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "version",
+          "noctiteReady"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "noctiteReady": {
+            "type": "boolean"
+          }
+        }
+      },
+      "binding": {
+        "type": "http",
+        "method": "GET",
+        "path": "/manafield/noctite/status",
+        "codecs": [
+          "json"
+        ]
+      }
+    }
+  ]
+}
