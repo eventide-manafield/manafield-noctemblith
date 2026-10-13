@@ -1,0 +1,8 @@
+.DS_Store
+.idea/
+.vscode/
+*.exe
+*.test
+*.out
+/coverage.out
+/manafield-noctite
