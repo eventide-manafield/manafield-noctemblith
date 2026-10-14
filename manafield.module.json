@@ -1,13 +1,13 @@
 {
-  "id": "manafield-noctite",
-  "name": "Manafield Noctite Adapter",
-  "description": "Read-only health and status bridge for an independently managed Noctite (Misskey fork) service.",
-  "version": "0.0.1",
+  "id": "manafield-noctemblith",
+  "name": "Manafield Noctemblith Adapter",
+  "description": "Read-only readiness adapter for Noctemblith and Manafield Account Core; Noctemblith DB remains independently owned.",
+  "version": "0.1.0",
   "healthOperation": "health",
   "operations": [
     {
       "id": "health",
-      "description": "Reports whether the configured Noctite server is ready.",
+      "description": "Checks Noctemblith and Manafield Account Core readiness, including the Account database binding.",
       "input": null,
       "output": {
         "type": "object",
@@ -15,7 +15,9 @@
           "status",
           "service",
           "version",
-          "noctiteReady"
+          "noctemblithReady",
+          "accountCoreReady",
+          "accountDatabaseReady"
         ],
         "properties": {
           "status": {
@@ -27,7 +29,13 @@
           "version": {
             "type": "string"
           },
-          "noctiteReady": {
+          "noctemblithReady": {
+            "type": "boolean"
+          },
+          "accountCoreReady": {
+            "type": "boolean"
+          },
+          "accountDatabaseReady": {
             "type": "boolean"
           }
         }
@@ -43,7 +51,7 @@
     },
     {
       "id": "status",
-      "description": "Returns the read-only status of the Noctite backend.",
+      "description": "Returns the non-sensitive readiness status of Noctemblith and its Account dependency.",
       "input": null,
       "output": {
         "type": "object",
@@ -51,7 +59,9 @@
           "status",
           "service",
           "version",
-          "noctiteReady"
+          "noctemblithReady",
+          "accountCoreReady",
+          "accountDatabaseReady"
         ],
         "properties": {
           "status": {
@@ -63,7 +73,13 @@
           "version": {
             "type": "string"
           },
-          "noctiteReady": {
+          "noctemblithReady": {
+            "type": "boolean"
+          },
+          "accountCoreReady": {
+            "type": "boolean"
+          },
+          "accountDatabaseReady": {
             "type": "boolean"
           }
         }
@@ -71,7 +87,7 @@
       "binding": {
         "type": "http",
         "method": "GET",
-        "path": "/manafield/noctite/status",
+        "path": "/manafield/noctemblith/status",
         "codecs": [
           "json"
         ]

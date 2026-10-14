@@ -13,7 +13,7 @@
     }
   },
   "consumer_manifest_fragment": {
-    "id": "manafield-noctite",
+    "id": "manafield-noctemblith",
     "requires": {
       "capabilities": {
         "identity": {
@@ -24,14 +24,14 @@
     }
   },
   "instance_binding_example": {
-    "consumer": "manafield-noctite",
+    "consumer": "manafield-noctemblith",
     "slot": "identity",
     "target": "manafield-account-core",
     "note": "Administrator selects actual Module instance. This is not a deployable Instance Definition fragment."
   },
   "oauth_client_example": {
-    "client_id": "noctite-manafield-integration",
-    "redirect_uri": "https://noctite.manafield.studio/auth/manafield/callback",
+    "client_id": "noctemblith-manafield-integration",
+    "redirect_uri": "https://noctemblith-dev.manafield.studio/auth/manafield/callback",
     "response_type": "code",
     "code_challenge_method": "S256",
     "userinfo_fields": [
@@ -42,9 +42,9 @@
   },
   "activation_gates": [
     "Account Core provider advertises and contract-tests complete manafield.identity.oauth2 v1",
-    "Noctite fork implements OAuth client + JIT signup + first-login consent + local identity mapping",
+    "Noctemblith fork implements OAuth client + JIT signup + first-login consent + local identity mapping",
     "Account disable/logout lifecycle policy and session revocation verified",
     "Adapter configured to require capability and owner binds it in dev Instance",
-    "Noctite development integration tests and security review pass"
+    "Noctemblith development integration tests and security review pass"
   ]
 }
