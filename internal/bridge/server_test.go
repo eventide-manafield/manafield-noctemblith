@@ -9,95 +9,145 @@ import (
 	"time"
 )
 
-func TestHealthyNoctiteMapsToManafieldHealth(t *testing.T) {
-	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/healthz/" || r.Method != http.MethodGet {
-			t.Errorf("unexpected upstream request: %s %s", r.Method, r.URL.Path)
+func dependencies(t *testing.T, nStatus, aStatus int, aBody string) (string, string, func()) {
+	t.Helper()
+	n := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" || r.URL.Path != "/healthz/" {
+			t.Errorf("unexpected Noctemblith request: %s %s", r.Method, r.URL.Path)
 		}
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(nStatus)
 	}))
-	defer remote.Close()
-	mux, err := New(remote.URL+"/healthz/", nil)
+	a := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" || r.URL.Path != "/manafield/health" {
+			t.Errorf("unexpected Account request: %s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(aStatus)
+		_, _ = w.Write([]byte(aBody))
+	}))
+	return n.URL + "/healthz/", a.URL + "/manafield/health", func() { n.Close(); a.Close() }
+}
+
+const goodAccount = `{"status":"ok","service":"manafield-account-core","databaseStatus":"ready"}`
+
+func TestHealthyDependencies(t *testing.T) {
+	n, a, cleanup := dependencies(t, 200, 200, goodAccount)
+	defer cleanup()
+	h, err := New(n, a, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"/manafield/health", "/manafield/noctite/status"} {
+	for _, path := range []string{"/manafield/health", "/manafield/noctemblith/status"} {
 		w := httptest.NewRecorder()
-		mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
-		if w.Code != http.StatusOK {
-			t.Fatalf("%s: status %d", path, w.Code)
+		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		if w.Code != 200 {
+			t.Fatalf("%s status=%d: %s", path, w.Code, w.Body.String())
 		}
-		var data struct {
-			Status       string
-			NoctiteReady bool
+		var v struct {
+			Status               string
+			Service              string
+			NoctemblithReady     bool
+			AccountCoreReady     bool
+			AccountDatabaseReady bool
 		}
-		if err := json.Unmarshal(w.Body.Bytes(), &data); err != nil || data.Status != "ok" || !data.NoctiteReady {
-			t.Fatalf("%s: unexpected result %s error %v", path, w.Body.String(), err)
-		}
-		if w.Header().Get("Cache-Control") != "no-store" {
-			t.Fatal("health cacheable")
-		}
-	}
-}
-
-func TestNoctiteUnhealthyFailsClosed(t *testing.T) {
-	for _, remoteStatus := range []int{http.StatusServiceUnavailable, http.StatusNotFound, http.StatusFound} {
-		remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(remoteStatus)
-		}))
-		mux, err := New(remote.URL+"/healthz/", nil)
-		if err != nil {
+		if err := json.Unmarshal(w.Body.Bytes(), &v); err != nil {
 			t.Fatal(err)
 		}
-		w := httptest.NewRecorder()
-		mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/manafield/health", nil))
-		if w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), "\"noctiteReady\":false") {
-			t.Fatalf("upstream %d: %d %s", remoteStatus, w.Code, w.Body.String())
+		if v.Status != "ok" || v.Service != "manafield-noctemblith" || !v.NoctemblithReady || !v.AccountCoreReady || !v.AccountDatabaseReady {
+			t.Fatalf("wrong readiness: %+v", v)
 		}
-		remote.Close()
+		if w.Header().Get("Cache-Control") != "no-store" {
+			t.Fatal("health response must not be cached")
+		}
 	}
 }
 
-func TestNetworkFailureDoesNotPretendHealthy(t *testing.T) {
-	client := &http.Client{Timeout: 100 * time.Millisecond, CheckRedirect: func(*http.Request, []*http.Request) error {
-		return http.ErrUseLastResponse
-	}}
-	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	url := remote.URL + "/healthz/"
-	remote.Close()
-	mux, err := New(url, client)
+func TestUnavailableDependenciesFailClosed(t *testing.T) {
+	cases := []struct {
+		name                 string
+		nStatus, aStatus     int
+		aBody                string
+		wantN, wantA, wantDB bool
+	}{
+		{"Noctemblith unavailable", 503, 200, goodAccount, false, true, true},
+		{"Account unavailable", 200, 503, goodAccount, true, false, false},
+		{"Account database waiting", 200, 200, `{"status":"degraded","service":"manafield-account-core","databaseStatus":"waiting"}`, true, false, false},
+		{"Account missing schema", 200, 200, `{"status":"ok","service":"manafield-account-core"}`, true, false, false},
+		{"Account wrong service", 200, 200, `{"status":"ok","service":"evil","databaseStatus":"ready"}`, true, false, true},
+		{"Account malformed JSON", 200, 200, `not json`, true, false, false},
+		{"Noctemblith redirect", 302, 200, goodAccount, false, true, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			n, a, cleanup := dependencies(t, tc.nStatus, tc.aStatus, tc.aBody)
+			defer cleanup()
+			h, err := New(n, a, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, httptest.NewRequest("GET", "/manafield/health", nil))
+			if w.Code != 503 {
+				t.Fatalf("must degrade: %d %s", w.Code, w.Body.String())
+			}
+			var v struct {
+				NoctemblithReady     bool
+				AccountCoreReady     bool
+				AccountDatabaseReady bool
+			}
+			if err := json.Unmarshal(w.Body.Bytes(), &v); err != nil {
+				t.Fatal(err)
+			}
+			if v.NoctemblithReady != tc.wantN || v.AccountCoreReady != tc.wantA || v.AccountDatabaseReady != tc.wantDB {
+				t.Fatalf("unexpected readiness: %+v", v)
+			}
+		})
+	}
+}
+
+func TestNetworkFailureFailsClosed(t *testing.T) {
+	n, a, cleanup := dependencies(t, 200, 200, goodAccount)
+	cleanup()
+	client := &http.Client{Timeout: 100 * time.Millisecond, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	h, err := New(n, a, client)
 	if err != nil {
 		t.Fatal(err)
 	}
 	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, httptest.NewRequest("GET", "/manafield/health", nil))
-	if w.Code != 503 {
-		t.Fatalf("unavailable backend should return 503, got %d", w.Code)
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/manafield/health", nil))
+	if w.Code != 503 || !strings.Contains(w.Body.String(), `"accountCoreReady":false`) {
+		t.Fatalf("network failure: %d %s", w.Code, w.Body.String())
 	}
 }
 
-func TestRejectsUnsafeUpstreamTargets(t *testing.T) {
-	for _, url := range []string{
-		"", "/healthz/", "https://example.org/healthz/", "http://noctite:3000/",
-		"http://user:password@noctite:3000/healthz/",
-		"http://noctite:3000/healthz/?token=a",
-		"http://noctite:3000/healthz/#secret",
-		"http://noctite:3000/healthz/%2f",
+func TestRejectInvalidDependencyURLs(t *testing.T) {
+	for _, bad := range []string{
+		"", "/healthz/", "https://host/healthz/", "http://host/other",
+		"http://user:pass@host/healthz/", "http://host/healthz/?secret=a",
+		"http://host/healthz/#fragment", "http://host/healthz/%2f",
 	} {
-		if _, err := New(url, nil); err == nil {
-			t.Errorf("accepted invalid target %q", url)
+		if _, err := New(bad, "http://account:8080/manafield/health", nil); err == nil {
+			t.Errorf("accepted invalid Noctemblith endpoint %q", bad)
+		}
+	}
+	for _, bad := range []string{
+		"", "https://account/manafield/health", "http://account:8080/",
+		"http://account:8080/manafield/health?token=x",
+		"http://user:pass@account/manafield/health",
+	} {
+		if _, err := New("http://noctemblith-dev:3000/healthz/", bad, nil); err == nil {
+			t.Errorf("accepted invalid Account endpoint %q", bad)
 		}
 	}
 }
 
-func TestNoWriteEndpoints(t *testing.T) {
-	mux, err := New("http://noctite:3000/healthz/", nil)
+func TestNoWriteEndpoint(t *testing.T) {
+	h, err := New("http://noctemblith-dev:3000/healthz/", "http://account:8080/manafield/health", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, httptest.NewRequest("POST", "/manafield/noctite/status", nil))
+	h.ServeHTTP(w, httptest.NewRequest("POST", "/manafield/noctemblith/status", nil))
 	if w.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("POST unexpectedly allowed: %d", w.Code)
+		t.Fatalf("writes must be refused: %d", w.Code)
 	}
 }

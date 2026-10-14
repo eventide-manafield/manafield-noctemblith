@@ -7,19 +7,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/eventide-manafield/manafield-noctite/internal/bridge"
+	"github.com/eventide-manafield/manafield-noctemblith/internal/bridge"
 )
 
 func main() {
-	target := strings.TrimSpace(os.Getenv("MANAFIELD_NOCTITE_HEALTH_URL"))
-	if target == "" {
-		target = "http://noctite:3000/healthz/"
+	noctemblith := strings.TrimSpace(os.Getenv("MANAFIELD_NOCTEMBLITH_HEALTH_URL"))
+	if noctemblith == "" {
+		noctemblith = "http://noctemblith-dev:3000/healthz/"
 	}
-	handler, err := bridge.New(target, nil)
+	accountCore := strings.TrimSpace(os.Getenv("MANAFIELD_NOCTEMBLITH_ACCOUNT_HEALTH_URL"))
+	if accountCore == "" {
+		accountCore = "http://module-manafield-account-core:8080/manafield/health"
+	}
+	handler, err := bridge.New(noctemblith, accountCore, nil)
 	if err != nil {
-		slog.Error("invalid Noctite upstream configuration", "error", err)
+		slog.Error("invalid Noctemblith dependency configuration", "error", err)
 		os.Exit(1)
 	}
+
 	port := strings.TrimSpace(os.Getenv("PORT"))
 	if port == "" {
 		port = "8080"
@@ -28,10 +33,10 @@ func main() {
 		slog.Error("invalid module listen port")
 		os.Exit(1)
 	}
-	slog.Info("Noctite module adapter started", "port", port)
+	slog.Info("Noctemblith module adapter started", "port", port)
 	server := &http.Server{Addr: ":" + port, Handler: handler, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		slog.Error("Noctite module stopped", "error", err)
+		slog.Error("Noctemblith module stopped", "error", err)
 		os.Exit(1)
 	}
 }
